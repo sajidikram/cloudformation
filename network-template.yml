@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create a VPC & Subnets
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      Tags:
+        - Key: Name
+          Value: My First VPC
+  MyPubicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 192.168.1.0/24
+      AvailabilityZone: ap-southeast-2a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: My First Public Subnet
+      VpcId: !Ref MyVPC
+  MyPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 192.168.2.0/24
+      AvailabilityZone: ap-southeast-2b
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: My First Private Subnet
+      VpcId: !Ref MyVPC
+  MyIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: My First Internet Gateway
+  AttachIGWVPC:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref MyIGW
+      VpcId: !Ref MyVPC
+  PubRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: My First Public Route Table
+      VpcId: !Ref MyVPC
+  myInternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: MyIGW
+    Properties:
+      RouteTableId:
+        Ref: PubRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: MyIGW
+  Link_pubsubnet_PubRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PubRouteTable
+      SubnetId: !Ref MyPubicSubnet
+  PrivRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: My First Private Route Table
+      VpcId: !Ref MyVPC
+  myPrivRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref myNATGW
+      RouteTableId: !Ref PrivRouteTable
+  Link_privsubnet_PrivRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivRouteTable
+      SubnetId: !Ref MyPrivateSubnet
+  myNATGW:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - EIP
+          - AllocationId
+      SubnetId: !Ref MyPubicSubnet
+      Tags:
+        - Key: Name
+          Value: My First NAT Gateway
+  EIP:
+    DependsOn: AttachIGWVPC
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  MySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: This is the first Security Group Created by CloudFormation for MyVPC
+      GroupName: first-sg-for-myvpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: My First Security Group
+      VpcId: !Ref MyVPC
+  MyEC2PrivSubnet:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-2b
+      ImageId: ami-0dc96254d5535925f
+      InstanceType: t2.micro
+      KeyName: myfirstawskey
+      SecurityGroupIds: [!Ref MySG]
+      SubnetId: !Ref MyPrivateSubnet
+      Tags:
+        - Key: Name
+          Value: ec2 using private subnet
+  MyEC2PubSubnet:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-2a
+      ImageId: ami-0dc96254d5535925f
+      InstanceType: t2.micro
+      KeyName: myfirstawskey
+      SecurityGroupIds: [!Ref MySG]
+      SubnetId: !Ref MyPubicSubnet
+      Tags:
+        - Key: Name
+          Value: ec2 using public subnet
