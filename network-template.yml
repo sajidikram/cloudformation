@@ -48,14 +48,13 @@ Resources:
       VpcId: !Ref MyVPC
   myInternetRoute:
     Type: AWS::EC2::Route
-    DependsOn: MyIGW
     Properties:
       RouteTableId:
         Ref: PubRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
         Ref: MyIGW
-  Link_pubsubnet_PubRouteTable:
+  LinkPubRouteTable:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PubRouteTable
@@ -73,7 +72,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref myNATGW
       RouteTableId: !Ref PrivRouteTable
-  Link_privsubnet_PrivRouteTable:
+  LinkPrivRouteTable:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivRouteTable
@@ -90,7 +89,6 @@ Resources:
         - Key: Name
           Value: My First NAT Gateway
   EIP:
-    DependsOn: AttachIGWVPC
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
